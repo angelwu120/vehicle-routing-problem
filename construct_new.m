@@ -155,7 +155,3 @@ function newroute = exchange(route,dpt_ind,cust,cap)
         end
     end
 end
-
-
-
-
