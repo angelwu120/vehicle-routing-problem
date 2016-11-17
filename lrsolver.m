@@ -1,5 +1,6 @@
 clear all
 lam = 1.4; mu = 0.9; v = 0.3;
+N = 100;t = 0.5; l = 0.5;
 cap = 5;%capacity
 coordinate = xlsread('data15points.xls');%coordinate of cities, n by 2 matrix
 cust = coordinate(4:18,6:8);
@@ -30,14 +31,13 @@ xlabel('xcoordinate')
 ylabel('ycoordinate')
 
 
-%Spawning phase (ellipsoid generation)
-
-rx = std(cust(1,:));
-ry = std(cust(2,:));
+%Spawning phase (first ellipsoid generation)
+point = [];
+rx = 2*std(cust(1,:));
+ry = 2*std(cust(2,:));
 xcp = p0k(1,1);
 ycp = p0k(1,2);
 k = 1;
-N = 1000;
 figure(2)
 while k<=N
     alpha = rand(1);
@@ -45,17 +45,18 @@ while k<=N
     xk = xcp + rx*alpha*sin(theta);
     yk = ycp + ry*alpha*cos(theta);
     k = k+1;
-    plot(xk,yk,'o')
-    hold on
+    point = [point;xk yk];
+%     plot(xk,yk,'o')
+%     hold on
 end
-title('Spawning Phase')
-xlabel('xcoordinate')
-ylabel('ycoordinate')
-hold off
+% title('Spawning Phase')
+% xlabel('xcoordinate')
+% ylabel('ycoordinate')
+% hold off
 
 
 %Routing phase 
-[route,cost_route,M]= simanl(p0k,cust,cap,dpt_ind);%solved by simulated annealing
+[route,cost_route]= simanl(p0k,cust,cap,dpt_ind);%solved by simulated annealing
 
 %%show animation
 % figure(3)
@@ -92,11 +93,9 @@ stem = [route(2) route(dpt_loc(end)-1)];
 for i =2:(length(dpt_loc)-1)
     stem = [stem(1:end-1) route(dpt_loc(i)-1) route(dpt_loc(i)+1) stem(end)];
 end
-
 stem_loc = cust(stem,:);
-p1k = weber(stem_loc);
+p1k = weber(stem_loc);%relocate depot
 [route2,cost_route2]= simanl(p1k,cust,cap,dpt_ind);
-
 custpt2 = [cust;p1k(1,:) 0];
 p3 = plot(p1k(1,1),p1k(1,2),'or','linewidth',8);
 hold on
@@ -116,3 +115,69 @@ k = 7;
     end
 legend([p1 p2 p3 p4],'original depot','original route','relocated depot','revised route')
 hold off;
+
+
+
+%%%step 2.5
+cost_min = inf;
+for i = 1:length(point(:,1))
+    [route_new,]= simanl(point(1,:),cust,cap,dpt_ind);
+    dpt_loc = find(route_new(:)==dpt_ind);
+    stem = [route_new(2) route_new(dpt_loc(end)-1)];
+    for j =2:(length(dpt_loc)-1)
+        stem = [stem(1:end-1) route_new(dpt_loc(j)-1) route_new(dpt_loc(j)+1) stem(end)];
+    end
+    stem_loc = cust(stem,:);
+    p1k = weber(stem_loc);%relocate depot
+    [route_new,cost_routenew]= simanl(p1k,cust,cap,dpt_ind);
+    if cost_routenew<=cost_min
+        cost_min = cost_routenew;
+        route_min = route_new;
+        p1k_min = p1k;
+    end
+end
+
+custptnew = [cust;p1k_min(1,:) 0];
+p4 = plot(p1k_min(1,1),p1k_min(1,2),'or','linewidth',8);
+hold on
+colorstr = autumn(10);
+k = 7;
+    for i = 1:length(route_min)-1
+        linex = [custptnew(route_min(i),1) custptnew(route_min(i+1),1)];
+        liney = [custptnew(route_min(i),2) custptnew(route_min(i+1),2)];
+        p4 = plot(linex,liney,'-*','Color',colorstr(k,:));%%number of vehicle is
+%    large
+        %plot(linex,liney,'-*','Color',colorstr(k));
+        hold on
+        if route_min(i+1)==dpt_ind
+        k = k+1;
+        end
+        pause(0.01)
+    end
+
+
+pik = p1k_min;
+cost_min2 = inf;
+while  N>=1
+    rx = rx*t;
+    ry = ry*t;
+    N = floor(N*l);
+    point = elpsgenerate(p1k_min,N,rx,ry);
+    cost_min = cost_min2;
+    for i = 1:length(point(:,1))
+        [route_new,]= simanl(point(1,:),cust,cap,dpt_ind);
+        dpt_loc = find(route_new(:)==dpt_ind);
+        stem = [route_new(2) route_new(dpt_loc(end)-1)];
+        for j =2:(length(dpt_loc)-1)
+            stem = [stem(1:end-1) route_new(dpt_loc(j)-1) route_new(dpt_loc(j)+1) stem(end)];
+        end
+        stem_loc = cust(stem,:);
+        p1k = weber(stem_loc);%relocate depot
+        [route_new,cost_routenew]= simanl(p1k,cust,cap,dpt_ind);
+        if cost_routenew<=cost_min2
+            cost_min2 = cost_routenew;
+            route_min = route_new;
+            p1k_min = p1k;
+        end
+    end
+end
