@@ -1,4 +1,4 @@
-function [route,cost_orig,M]= simanl(pk,cust,cap,dpt_ind)
+function [route,cost_orig]= simanl(pk,cust,cap,dpt_ind)
 %dpt_ind -- depot index
 %cap -- vehicle capacity
 %cust -- [1-coord, 2-coord, 3-density]
@@ -114,4 +114,4 @@ end
 
 
 
-            
+         
